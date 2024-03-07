@@ -1,0 +1,93 @@
+name: az-zoom
+recipe: drupal10
+config:
+  php: '8.2'
+  via: apache:2.4
+  webroot: web
+  database: mariadb:10.4
+  xdebug: false
+services:
+  # Replaces default lando MariaDB image with arm64 (Apple M1) compatible one.
+  # TODO: remove database service overrides once lando is updated.
+  database:
+    type: compose
+    services:
+      image: mariadb:10.4
+      command: docker-entrypoint.sh mariadbd
+      restart: always
+      ports:
+        - '3306'
+      environment:
+        MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'true'
+        MARIADB_DATABASE: drupal10
+        MYSQL_DATABASE: drupal10
+        MARIADB_USER: drupal10
+        MARIADB_PASSWORD: drupal10
+  appserver:
+    config:
+      php: .vscode/php.ini
+    overrides:
+      environment:
+        SIMPLETEST_DB: 'mysql://drupal10:drupal10@database/drupal10'
+        SIMPLETEST_BASE_URL: 'http://appserver'
+        MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","chromeOptions":{"args":["--disable-gpu","--disable-dev-shm-usage","--headless","--no-sandbox"],"w3c":false}},"http://chromedriver:4444/wd/hub"]'
+        XDEBUG_MODE: debug
+      volumes:
+        # Don't share our host working directory as /app. We want /app empty for composer.
+        - /app
+        # Instead share our host working directory as a standalone package.
+        - .:/usr/local/az_zoom
+    build:
+      # Create a new quickstart project and use the azqs_list_assets module as a non-packagist repository.
+      - git clone https://github.com/az-digital/az-quickstart-scaffolding.git /app
+      - composer config repositories.localdev path /usr/local/az_zoom && composer require --no-update uaz-web/az_zoom:\*@dev
+      - composer install
+      - ln -s /usr/local/quickstart-install-profile/.vscode /app/.vscode
+  node:
+    type: node:18
+    build:
+      - yarn install
+  chromedriver:
+    type: compose
+    services:
+      image: seleniarm/standalone-chromium:4.1.4-20220429
+      command: /opt/bin/entry_point.sh
+
+tooling:
+  # Provide a command to install Drupal.
+  install:
+    service: appserver
+    cmd:
+      - /app/vendor/bin/drush --root=/app/web site:install
+        --account-mail=noreply@email.arizona.edu --account-name=azadmin
+        --account-pass=azadmin
+        --db-url=mysql://drupal10:drupal10@database:3306/drupal10 -y --verbose
+      - /app/vendor/bin/drush --root=/app/web pm:install -y az_demo az_zoom
+      - /app/vendor/bin/drush --root=/app/web config:set -y az_cas.settings disable_login_form 0
+      - /app/vendor/bin/drush --root=/app/web cache:rebuild
+
+  # Provide Drush tooling to automatically know the Drupal root.
+  drush:
+    service: appserver
+    cmd: /app/vendor/bin/drush --root=/app/web
+  # Provide Drupal console tooling to automatically know the Drupal root.
+  drupal:
+    service: appserver
+    cmd: /app/vendor/bin/drupal --root=/app/web
+  # Provide phpcs tooling to check coding standards.
+  phpcs:
+    service: appserver
+    cmd: /app/vendor/bin/phpcs --colors --standard=web/profiles/custom/az_quickstart/phpcs.xml.dist web/modules/custom/az_zoom
+  # Provide PHPCBF tooling to fix coding standards.
+  phpcbf:
+    service: appserver
+    cmd: /app/vendor/bin/phpcbf --colors --standard=web/profiles/custom/az_quickstart/phpcs.xml.dist web/modules/custom/az_zoom
+  phpstan:
+    service: appserver
+    cmd: /app/vendor/bin/phpstan analyse --configuration web/profiles/custom/az_quickstart/phpstan.neon web/modules/custom/az_zoom
+  yarn:
+    service: node
+    cmd: yarn
+  eslint:
+    service: node
+    cmd: yarn run eslint --color
