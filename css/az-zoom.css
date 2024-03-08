@@ -1,6 +1,10 @@
 .image-zoom {
   display: none;
 }
+.image-zoom-container {
+  position: relative;
+overflow: hidden;
+}
 
 .image-zoom-container:after {
   content: '';
