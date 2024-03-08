@@ -11,9 +11,8 @@ import FocusImg from './az-zoom.js';
       context.querySelectorAll('.image-zoom-container').forEach(function (element) {
         var imgElement = element.querySelector('.original-image');
         var fid = imgElement.getAttribute('fid');
-        console.log('fid', fid);
         new FocusImg({
-          imageSrc: imgElement.src,
+          imageSrc: drupalSettings.AZZoom.image_urls[fid] || imgElement.src,
           parentElement: element,
           zoomFactor: drupalSettings.AZZoom.image_zoom_factor || '250%',
           smoother: drupalSettings.AZZoom.image_smoother || true,
