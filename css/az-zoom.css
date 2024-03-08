@@ -1,8 +1,8 @@
 .image-zoom {
-  display: inline-block;
+  display: none;
 }
 
-.image-zoom:after {
+.image-zoom-container:after {
   content: '';
   display: block;
   width: 33px;
