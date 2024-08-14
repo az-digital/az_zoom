@@ -1,5 +1,7 @@
 /**
  * An image component that supports the zooming effect for any web app.
+ * 
+ * Modelled after https://github.com/jackmoore/zoom/blob/master/jquery.zoom.js
  */
 
 class FocusImg {
