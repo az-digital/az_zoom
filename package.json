@@ -33,7 +33,7 @@
     "minimist": "^1.2.2",
     "mkdirp": "^1.0.4",
     "nightwatch": "^1.6.3",
-    "prettier": "^2.1.2",
+    "prettier": "^3.6.2",
     "terser": "^5.14.2"
   },
   "babel": {
